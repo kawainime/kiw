@@ -1,4 +1,4 @@
-// NOKOSKU Backend - Express 5 Compatible Version
+// NOKOSKU Backend - Final Fix for Express 5
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -11,8 +11,9 @@ const logger = require('../lib/logger');
 const app = express();
 
 // 1. Security & Middleware
+// Matikan contentSecurityPolicy agar tidak memblokir script/Lottie di frontend
 app.use(helmet({
-  contentSecurityPolicy: false, // Diperlukan agar script/asset frontend bisa diload lancar
+  contentSecurityPolicy: false, 
 }));
 
 const allowedOrigin = process.env.FRONTEND_ORIGIN || '*';
@@ -58,15 +59,22 @@ app.use('/api/v1/admin', require('../routes/admin'));
 // 5. Serve Frontend (Vite Build)
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 
-// Serve file statis hasil build Vite
+// Serve file statis (JS, CSS, Gambar)
 app.use(express.static(frontendPath));
 
-// Perbaikan Express 5: Gunakan (.*) sebagai pengganti *
-app.get('(.*)', (req, res) => {
+// FIX EXPRESS 5: Gunakan Regex /.*/ untuk catch-all route (SPA)
+// Jangan gunakan string '*' atau '(.*)' karena akan error parameter name
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
     if (err) {
       console.error("Error sending index.html:", err);
-      res.status(500).send("Error: Frontend build belum ada. Jalankan 'npm run build' di folder frontend.");
+      // Fallback pesan error jika build tidak ditemukan
+      res.status(500).send(`
+        <h1>Server Error</h1>
+        <p>Frontend build tidak ditemukan.</p>
+        <p>Silakan jalankan perintah berikut di folder frontend:</p>
+        <pre>npm run build</pre>
+      `);
     }
   });
 });
