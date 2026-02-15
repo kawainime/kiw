@@ -1,10 +1,10 @@
-// NOKOSKU Backend - Updated Fix
+// NOKOSKU Backend - Express 5 Compatible Version
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const compression = require('compression');
-const path = require('path'); // Pindahkan ke atas
+const path = require('path');
 const sequelize = require('../models/db');
 const logger = require('../lib/logger');
 
@@ -12,7 +12,7 @@ const app = express();
 
 // 1. Security & Middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Matikan jika mengganggu load script Vite/Lottie
+  contentSecurityPolicy: false, // Diperlukan agar script/asset frontend bisa diload lancar
 }));
 
 const allowedOrigin = process.env.FRONTEND_ORIGIN || '*';
@@ -23,7 +23,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use(compression()); // Performance
+app.use(compression());
 
 // Rate limit
 const limiter = rateLimit({
@@ -39,7 +39,7 @@ sequelize.sync({ force: false }).then(() => {
 }).catch(e => console.error('DB sync error:', e));
 
 // 3. Health Check
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   logger.info('Health check requested');
   res.json({
     status: 'ok',
@@ -48,7 +48,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// 4. API Routes (WAJIB DITARUH SEBELUM FRONTEND)
+// 4. API Routes
 app.use('/api/v1/auth', require('../routes/auth'));
 app.use('/api/v1/user/profile', require('../routes/profile'));
 app.use('/api/v1/deposit', require('../routes/deposit'));
@@ -56,21 +56,17 @@ app.use('/api/v1/orders', require('../routes/order'));
 app.use('/api/v1/admin', require('../routes/admin'));
 
 // 5. Serve Frontend (Vite Build)
-// Mengarah ke folder frontend/dist (hasil build)
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 
-// Serve file statis (js, css, images) dari folder dist
+// Serve file statis hasil build Vite
 app.use(express.static(frontendPath));
 
-// Jika ada folder lottie/assets manual di source (opsional, untuk jaga-jaga)
-app.use('/lottie', express.static(path.join(__dirname, '../../frontend/lottie')));
-
-// HANDLE SPA: Semua request lain diarahkan ke index.html
-app.get('*', (req, res) => {
+// Perbaikan Express 5: Gunakan (.*) sebagai pengganti *
+app.get('(.*)', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
     if (err) {
       console.error("Error sending index.html:", err);
-      res.status(500).send("Server Error: Frontend build not found. Did you run 'npm run build'?");
+      res.status(500).send("Error: Frontend build belum ada. Jalankan 'npm run build' di folder frontend.");
     }
   });
 });
