@@ -16,7 +16,7 @@ io.on('connection', socket => {
     console.log('Socket.io client connected:', socket.id);
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`NOKOSKU backend running on http://localhost:${PORT}`);
 });
